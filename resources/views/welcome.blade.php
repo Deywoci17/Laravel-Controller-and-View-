@@ -12,8 +12,7 @@
 <body>
     <div class="container text-center my-5">
         <h1 class="mb-4">Belajar Controller & View pada Laravel</h1>
-        <img class="img-thumbnail" src="@vite('resources/images/laravel.png')" alt="image">
-
+        <img class="img-thumbnail" src="https://cdn.freebiesupply.com/logos/large/2x/mcdonalds-15-logo-png-transparent.png"width="120">
         <div class="col-md-2 offset-md-5 mt-4">
             <div class="d-grid gap-2">
                 <a class="btn btn-dark" href="{{ route('home') }}">Home</a>
