@@ -13,23 +13,22 @@ class PositionSeeder extends Seeder
      */
     public function run(): void
     {
-    DB::table('positions')->insert([
-    [
-    'code' => 'FE',
-    'name' => 'Front End Developer',
-    'description' => 'Front End Developer'
-    ],
-    [
-    'code' => 'BE',
-    'name' => 'Back End Developer',
-    'description' => 'Back End Developer'
-    ],
-    [
-    'code' => 'SA',
-    'name' => 'System Analist',
-    'description' => 'System Analist'
-    ],
-    ]);
+        DB::table('positions')->insert([
+            [
+                'code' => 'FE',
+                'name' => 'Front End Developer',
+                'description' => 'Front End Developer'
+            ],
+            [
+                'code' => 'BE',
+                'name' => 'Back End Developer',
+                'description' => 'Back End Developer'
+            ],
+            [
+                'code' => 'SA',
+                'name' => 'System Analist',
+                'description' => 'System Analist'
+            ],
+        ]);
     }
-
 }

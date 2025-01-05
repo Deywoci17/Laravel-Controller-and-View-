@@ -2,155 +2,155 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class EmployeeController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $pageTitle = 'Employee List';
 
-        // Query Builder untuk join employees dan positions
         $employees = DB::table('employees')
             ->leftJoin('positions', 'employees.position_id', '=', 'positions.id')
-            ->select('employees.*', 'employees.id as employee_id', 'positions.name as position_name')
+            ->select('employees.*', 'positions.name as position_name')
             ->get();
 
-        return view('employee.index', [
-            'pageTitle' => $pageTitle,
-            'employees' => $employees
-        ]);
+        return view('employee.index', compact('pageTitle', 'employees'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         $pageTitle = 'Create Employee';
-
-        // Query Builder untuk mendapatkan data positions
         $positions = DB::table('positions')->get();
 
         return view('employee.create', compact('pageTitle', 'positions'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $messages = [
-            'required' => ':Attribute harus diisi.',
-            'email' => 'Isi :attribute dengan format yang benar',
-            'numeric' => 'Isi :attribute dengan angka'
+            'required' => ':attribute harus diisi.',
+            'email' => 'Isi :attribute dengan format yang benar.',
+            'numeric' => 'Isi :attribute dengan angka.',
         ];
 
-        $validator = Validator::make($request->all(), [
-            'firstName' => 'required',
-            'lastName' => 'required',
-            'email' => 'required|email',
-            'age' => 'required|numeric',
+        $validatedData = $request->validate([
+            'firstName' => 'required|string|max:255',
+            'lastName' => 'required|string|max:255',
+            'email' => 'required|email|unique:employees,email',
+            'age' => 'required|numeric|min:1',
+            'cv' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
         ], $messages);
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
+        $originalFilename = null;
+        $encryptedFilename = null;
+
+        if ($request->hasFile('cv')) {
+            $file = $request->file('cv');
+            $originalFilename = $file->getClientOriginalName();
+            $encryptedFilename = $file->hashName();
+            $file->store('public/files');
         }
 
-        // Query Builder untuk INSERT data ke employees
-        DB::table('employees')->insert([
-            'firstname' => $request->firstName,
-            'lastname' => $request->lastName,
-            'email' => $request->email,
-            'age' => $request->age,
-            'position_id' => $request->position,
-        ]);
+        $employee = new Employee();
+        $employee->firstname = $validatedData['firstName'];
+        $employee->lastname = $validatedData['lastName'];
+        $employee->email = $validatedData['email'];
+        $employee->age = $validatedData['age'];
+        $employee->position_id = $request->position;
 
-        return redirect()->route('employees.index');
+        if ($originalFilename && $encryptedFilename) {
+            $employee->original_filename = $originalFilename;
+            $employee->encrypted_filename = $encryptedFilename;
+        }
+
+        $employee->save();
+
+        return redirect()->route('employees.index')->with('success', 'Data berhasil disimpan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         $pageTitle = 'Employee Detail';
 
-        // Query Builder untuk mendapatkan detail employee
         $employee = DB::table('employees')
             ->leftJoin('positions', 'employees.position_id', '=', 'positions.id')
-            ->select('employees.*', 'employees.id as employee_id', 'positions.name as position_name')
+            ->select('employees.*', 'positions.name as position_name')
             ->where('employees.id', $id)
             ->first();
 
         return view('employee.show', compact('pageTitle', 'employee'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
         $pageTitle = 'Edit Employee';
 
-        // Query Builder untuk mendapatkan data employee dan positions
-        $employee = DB::table('employees')->where('id', $id)->first();
+        $employee = DB::table('employees')
+            ->select('id', 'firstname', 'lastname', 'email', 'age', 'position_id')
+            ->where('id', $id)
+            ->first();
+
         $positions = DB::table('positions')->get();
 
         return view('employee.edit', compact('pageTitle', 'employee', 'positions'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         $messages = [
-            'required' => ':Attribute harus diisi.',
-            'email' => 'Isi :attribute dengan format yang benar',
-            'numeric' => 'Isi :attribute dengan angka'
+            'required' => ':attribute harus diisi.',
+            'email' => 'Isi :attribute dengan format yang benar.',
+            'numeric' => 'Isi :attribute dengan angka.',
         ];
 
-        $validator = Validator::make($request->all(), [
-            'firstName' => 'required',
-            'lastName' => 'required',
+        $validatedData = $request->validate([
+            'firstName' => 'required|string|max:255',
+            'lastName' => 'required|string|max:255',
             'email' => 'required|email',
-            'age' => 'required|numeric',
+            'age' => 'required|numeric|min:1',
         ], $messages);
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
-
-        // Query Builder untuk UPDATE data employees
         DB::table('employees')
             ->where('id', $id)
             ->update([
-                'firstname' => $request->firstName,
-                'lastname' => $request->lastName,
-                'email' => $request->email,
-                'age' => $request->age,
+                'firstname' => $validatedData['firstName'],
+                'lastname' => $validatedData['lastName'],
+                'email' => $validatedData['email'],
+                'age' => $validatedData['age'],
                 'position_id' => $request->position,
             ]);
 
-        return redirect()->route('employees.index');
+        return redirect()->route('employees.index')->with('success', 'Data berhasil diperbarui.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        // Query Builder untuk DELETE data employee
-        DB::table('employees')
-            ->where('id', $id)
-            ->delete();
+        DB::table('employees')->where('id', $id)->delete();
 
-        return redirect()->route('employees.index');
+        return redirect()->route('employees.index')->with('success', 'Data berhasil dihapus.');
+    }
+
+    public function downloadFile($employeeId)
+    {
+        $employee = Employee::find($employeeId);
+
+        if (!$employee || !$employee->encrypted_filename) {
+            return redirect()->back()->with('error', 'File tidak ditemukan.');
+        }
+
+        $encryptedFilename = 'public/files/' . $employee->encrypted_filename;
+        $downloadFilename = Str::lower($employee->firstname . '_' . $employee->lastname . '_cv.pdf');
+
+        if (Storage::exists($encryptedFilename)) {
+            return Storage::download($encryptedFilename, $downloadFilename);
+        }
+
+        return redirect()->back()->with('error', 'File tidak tersedia di server.');
     }
 }
